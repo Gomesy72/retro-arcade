@@ -975,21 +975,28 @@ function invadersLoop() {
     
     // Move aliens - check if any hit the edge
     let hitEdge = false;
+    let rightmostX = 0;
+    let leftmostX = canvas.width;
+    
+    // Find edges of alive aliens
     for (let alien of invadersAliens) {
         if (alien.alive) {
-            if (invadersDirection > 0 && alien.x + alien.width + 2 > canvas.width) {
-                hitEdge = true;
-                break;
-            } else if (invadersDirection < 0 && alien.x - 2 < 0) {
-                hitEdge = true;
-                break;
-            }
+            if (alien.x + alien.width > rightmostX) rightmostX = alien.x + alien.width;
+            if (alien.x < leftmostX) leftmostX = alien.x;
         }
     }
     
-    // If hit edge, reverse direction and move down
+    // Check if aliens should move down and reverse
+    if (invadersDirection > 0 && rightmostX + 2 >= canvas.width) {
+        invadersDirection = -1;
+        hitEdge = true;
+    } else if (invadersDirection < 0 && leftmostX - 2 <= 0) {
+        invadersDirection = 1;
+        hitEdge = true;
+    }
+    
+    // If hit edge, move down
     if (hitEdge) {
-        invadersDirection = -invadersDirection;
         for (let alien of invadersAliens) {
             if (alien.alive) {
                 alien.y += 10; // Move down
@@ -1000,7 +1007,7 @@ function invadersLoop() {
     // Move all aliens horizontally
     for (let alien of invadersAliens) {
         if (alien.alive) {
-            alien.x += invadersDirection * 1; // Move left or right
+            alien.x += invadersDirection * 2; // Move left or right (speed 2)
         }
     }
     
