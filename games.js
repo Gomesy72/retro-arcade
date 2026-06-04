@@ -62,11 +62,9 @@ function openGame(gameName) {
                 actionBtn.style.display = 'flex';
                 memoryTouch.style.display = 'none';
                 document.getElementById('btnAction').textContent = 'SHOOT';
+                initInvaders();
                 break;
-                dpad.style.display = 'none';
-                actionBtn.style.display = 'none';
-                memoryTouch.style.display = 'block';
-                break;
+            case 'memory':
             default:
                 dpad.style.display = 'none';
                 actionBtn.style.display = 'none';
