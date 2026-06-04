@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Space Invaders Test</title>
+    <style>
+        body { background: #000; color: #0f0; font-family: monospace; padding: 20px; }
+        #log { white-space: pre; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h1>Space Invaders Movement Test</h1>
+    <div id="log">Starting test...</div>
+
+    <script>
+        const log = document.getElementById('log');
+        function addLine(text) {
+            log.textContent += '\n' + text;
+        }
+
+        // Test the exact logic from the game
+        const canvas = { width: 600 };
+        let invadersDirection = 1;
+        let invadersAliens = [];
+        
+        // Create test aliens
+        for (let row = 0; row < 4; row++) {
+            for (let col = 0; col < 8; col++) {
+                invadersAliens.push({
+                    x: col * 35 + 20,
+                    y: row * 30 + 30,
+                    width: 25,
+                    height: 20,
+                    alive: true
+                });
+            }
+        }
+        
+        addLine('Initial aliens: ' + invadersAliens.length);
+        addLine('Canvas width: ' + canvas.width);
+        addLine('Initial direction: ' + invadersDirection);
+        addLine('');
+        
+        // Simulate 200 frames
+        for (let frame = 0; frame < 200; frame++) {
+            let hitEdge = false;
+            let rightmostX = 0;
+            let leftmostX = canvas.width;
+            
+            // Find edges
+            for (let alien of invadersAliens) {
+                if (alien.alive) {
+                    if (alien.x + alien.width > rightmostX) rightmostX = alien.x + alien.width;
+                    if (alien.x < leftmostX) leftmostX = alien.x;
+                }
+            }
+            
+            // Check edges
+            if (invadersDirection === 1 && rightmostX + 2 >= canvas.width) {
+                invadersDirection = -1;
+                hitEdge = true;
+                addLine(`Frame ${frame}: HIT RIGHT EDGE! Direction changed to LEFT`);
+            } else if (invadersDirection === -1 && leftmostX - 2 <= 0) {
+                invadersDirection = 1;
+                hitEdge = true;
+                addLine(`Frame ${frame}: HIT LEFT EDGE! Direction changed to RIGHT`);
+            }
+            
+            // Move down if hit edge
+            if (hitEdge) {
+                for (let alien of invadersAliens) {
+                    if (alien.alive) alien.y += 15;
+                }
+            }
+            
+            // Move horizontally
+            for (let alien of invadersAliens) {
+                if (alien.alive) alien.x += invadersDirection * 3;
+            }
+            
+            // Log position every 20 frames
+            if (frame % 20 === 0) {
+                const firstAlien = invadersAliens.find(a => a.alive);
+                if (firstAlien) {
+                    addLine(`Frame ${frame}: First alien at (${Math.round(firstAlien.x)}, ${Math.round(firstAlien.y)}), Direction: ${invadersDirection}`);
+                }
+            }
+        }
+        
+        addLine('');
+        addLine('TEST COMPLETE - Aliens should have moved side-to-side');
+    </script>
+</body>
+</html>

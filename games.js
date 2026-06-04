@@ -990,11 +990,13 @@ function invadersLoop() {
     console.log('Direction:', invadersDirection, 'Rightmost:', rightmostX, 'Leftmost:', leftmostX, 'Canvas:', canvas.width);
     
     // Check if aliens should move down and reverse
-    if (invadersDirection === 1 && rightmostX + 2 >= canvas.width) {
+    // Use >= for right edge, <= for left edge with margin
+    const margin = 5; // Safety margin
+    if (invadersDirection === 1 && rightmostX + margin >= canvas.width) {
         console.log('Hit right edge! Reversing to left.');
         invadersDirection = -1;
         hitEdge = true;
-    } else if (invadersDirection === -1 && leftmostX - 2 <= 0) {
+    } else if (invadersDirection === -1 && leftmostX - margin <= 0) {
         console.log('Hit left edge! Reversing to right.');
         invadersDirection = 1;
         hitEdge = true;
