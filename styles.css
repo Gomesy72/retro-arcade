@@ -179,18 +179,105 @@ body {
     margin: 5px 0;
 }
 
-/* Responsive */
+/* Mobile Controls */
+.mobile-controls {
+    display: none;
+    padding: 10px;
+}
+
+.dpad {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.dpad-row {
+    display: flex;
+    gap: 5px;
+}
+
+.dpad-btn {
+    width: 60px;
+    height: 60px;
+    font-size: 24px;
+    background: rgba(0, 217, 255, 0.2);
+    border: 2px solid var(--accent-green);
+    color: var(--accent-green);
+    border-radius: 10px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+.dpad-btn:active {
+    background: var(--accent-green);
+    color: black;
+}
+
+.action-buttons {
+    display: flex;
+    justify-content: center;
+    padding: 10px;
+}
+
+.action-btn {
+    width: 120px;
+    height: 60px;
+    font-size: 16px;
+    font-family: 'Courier New', monospace;
+    background: var(--accent);
+    border: none;
+    color: white;
+    border-radius: 10px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.action-btn:active {
+    background: var(--accent-green);
+}
+
+/* Show mobile controls on touch devices */
+@media (hover: none) and (pointer: coarse) {
+    .mobile-controls {
+        display: block;
+    }
+}
+
+/* Mobile responsive canvas */
 @media (max-width: 768px) {
     .brand h1 {
-        font-size: 2rem;
+        font-size: 1.5rem;
+    }
+    
+    .tagline {
+        font-size: 0.9rem;
     }
     
     .games-grid {
         grid-template-columns: 1fr;
+        gap: 15px;
+        padding: 20px 0;
+    }
+    
+    .game-card {
+        padding: 20px;
+    }
+    
+    .game-icon {
+        font-size: 3rem;
+    }
+    
+    .modal-content {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        border-radius: 0;
     }
     
     #gameCanvas {
         width: 100%;
-        height: auto;
+        max-width: 100%;
     }
 }

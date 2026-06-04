@@ -2,6 +2,14 @@
 let currentGame = null;
 let gameLoop = null;
 let canvas, ctx;
+let isMobile = false;
+
+// Detect mobile
+function checkMobile() {
+    return (('ontouchstart' in window) ||
+        (navigator.maxTouchPoints > 0) ||
+        (navigator.msMaxTouchPoints > 0));
+}
 
 function openGame(gameName) {
     const modal = document.getElementById('gameModal');
@@ -11,44 +19,90 @@ function openGame(gameName) {
     canvas = document.getElementById('gameCanvas');
     ctx = canvas.getContext('2d');
     
-    // Set canvas size
-    canvas.width = 600;
-    canvas.height = 400;
+    isMobile = checkMobile();
+    
+    // Set canvas size based on device
+    if (isMobile) {
+        canvas.width = Math.min(window.innerWidth - 40, 400);
+        canvas.height = Math.min(window.innerHeight - 300, 300);
+    } else {
+        canvas.width = 600;
+        canvas.height = 400;
+    }
     
     modal.style.display = 'flex';
     currentGame = gameName;
     
+    // Show/hide mobile controls
+    const dpad = document.getElementById('dpad');
+    const actionBtn = document.getElementById('actionButtons');
+    const memoryTouch = document.getElementById('memoryTouch');
+    
+    if (isMobile) {
+        document.querySelector('.mobile-controls').style.display = 'block';
+        
+        // Show appropriate controls for each game
+        switch(gameName) {
+            case 'snake':
+            case 'tetris':
+                dpad.style.display = 'flex';
+                actionBtn.style.display = 'none';
+                memoryTouch.style.display = 'none';
+                break;
+            case 'dino':
+                dpad.style.display = 'none';
+                actionBtn.style.display = 'flex';
+                memoryTouch.style.display = 'none';
+                document.getElementById('btnAction').textContent = 'JUMP';
+                break;
+            case 'memory':
+                dpad.style.display = 'none';
+                actionBtn.style.display = 'none';
+                memoryTouch.style.display = 'block';
+                break;
+            default:
+                dpad.style.display = 'none';
+                actionBtn.style.display = 'none';
+                memoryTouch.style.display = 'none';
+        }
+    }
+    
     switch(gameName) {
         case 'snake':
             title.textContent = '🐍 Snake';
-            instructions.textContent = 'Use arrow keys to move. Eat food to grow!';
+            instructions.textContent = isMobile ? 'Use D-Pad to move. Eat food!' : 'Use arrow keys to move. Eat food to grow!';
             initSnake();
             break;
         case 'tetris':
             title.textContent = '🧱 Tetris';
-            instructions.textContent = 'Arrow keys to move, Up to rotate';
+            instructions.textContent = isMobile ? 'D-Pad: Left/Right/Down, Up to rotate' : 'Arrow keys to move, Up to rotate';
             initTetris();
             break;
         case 'pong':
             title.textContent = '🏓 Pong';
-            instructions.textContent = 'Mouse or arrow keys to move paddle';
+            instructions.textContent = isMobile ? 'Touch paddle to move' : 'Mouse or arrow keys to move paddle';
             initPong();
             break;
         case 'breakout':
             title.textContent = '🧱 Breakout';
-            instructions.textContent = 'Mouse or arrow keys to move paddle';
+            instructions.textContent = isMobile ? 'Touch to move paddle' : 'Mouse or arrow keys to move paddle';
             initBreakout();
             break;
         case 'dino':
             title.textContent = '🦕 Chrome Dino';
-            instructions.textContent = 'Space or Up arrow to jump';
+            instructions.textContent = isMobile ? 'Tap JUMP button or tap screen' : 'Space or Up arrow to jump';
             initDino();
             break;
         case 'memory':
             title.textContent = '🃏 Memory Match';
-            instructions.textContent = 'Click cards to flip them. Match pairs!';
+            instructions.textContent = 'Tap cards to flip them';
             initMemory();
             break;
+    }
+    
+    // Setup mobile controls
+    if (isMobile) {
+        setupMobileControls(gameName);
     }
 }
 
@@ -89,6 +143,11 @@ function handleSnakeInput(e) {
         case 'ArrowDown': if (direction.y === 0) direction = {x: 0, y: 1}; break;
         case 'ArrowLeft': if (direction.x === 0) direction = {x: -1, y: 0}; break;
         case 'ArrowRight': if (direction.x === 0) direction = {x: 1, y: 0}; break;
+    }
+    
+    // Prevent default scrolling
+    if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+        e.preventDefault();
     }
 }
 
@@ -151,16 +210,26 @@ function snakeLoop() {
 let pongBall, pongPaddle, pongAI, pongScore;
 
 function initPong() {
-    pongBall = {x: 300, y: 200, dx: 4, dy: 4, radius: 8};
-    pongPaddle = {y: 150, height: 80, width: 10};
-    pongAI = {y: 150, height: 80, width: 10};
+    pongBall = {x: canvas.width/2, y: canvas.height/2, dx: 4, dy: 4, radius: 8};
+    pongPaddle = {y: canvas.height/2 - 40, height: 80, width: 10};
+    pongAI = {y: canvas.height/2 - 40, height: 80, width: 10};
     pongScore = {player: 0, ai: 0};
     
+    // Mouse control
     canvas.addEventListener('mousemove', (e) => {
         if (currentGame !== 'pong') return;
         const rect = canvas.getBoundingClientRect();
         pongPaddle.y = e.clientY - rect.top - pongPaddle.height / 2;
     });
+    
+    // Touch control for mobile
+    canvas.addEventListener('touchmove', (e) => {
+        if (currentGame !== 'pong') return;
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        pongPaddle.y = touch.clientY - rect.top - pongPaddle.height / 2;
+    }, {passive: false});
     
     pongLoop();
 }
@@ -239,18 +308,20 @@ function resetPongBall() {
 let breakoutBall, breakoutPaddle, breakoutBricks, breakoutScore;
 
 function initBreakout() {
-    breakoutBall = {x: 300, y: 200, dx: 3, dy: -3, radius: 6};
-    breakoutPaddle = {x: 250, y: 380, width: 100, height: 10};
+    breakoutBall = {x: canvas.width/2, y: canvas.height/2, dx: 3, dy: -3, radius: 6};
+    breakoutPaddle = {x: canvas.width/2 - 50, y: canvas.height - 30, width: 100, height: 10};
     breakoutScore = 0;
     
-    // Create bricks
+    // Create bricks - responsive to canvas size
+    const brickCols = Math.floor(canvas.width / 60);
+    const brickWidth = (canvas.width - (brickCols + 1) * 5) / brickCols;
     breakoutBricks = [];
     for (let row = 0; row < 5; row++) {
-        for (let col = 0; col < 10; col++) {
+        for (let col = 0; col < brickCols; col++) {
             breakoutBricks.push({
-                x: col * 60 + 5,
+                x: col * (brickWidth + 5) + 5,
                 y: row * 25 + 30,
-                width: 55,
+                width: brickWidth,
                 height: 20,
                 color: `hsl(${row * 60}, 100%, 50%)`,
                 alive: true
@@ -258,11 +329,21 @@ function initBreakout() {
         }
     }
     
+    // Mouse control
     canvas.addEventListener('mousemove', (e) => {
         if (currentGame !== 'breakout') return;
         const rect = canvas.getBoundingClientRect();
         breakoutPaddle.x = e.clientX - rect.left - breakoutPaddle.width / 2;
     });
+    
+    // Touch control for mobile
+    canvas.addEventListener('touchmove', (e) => {
+        if (currentGame !== 'breakout') return;
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        breakoutPaddle.x = touch.clientX - rect.left - breakoutPaddle.width / 2;
+    }, {passive: false});
     
     breakoutLoop();
 }
@@ -351,10 +432,20 @@ function initMemory() {
     memoryMatched = 0;
     memoryCanFlip = true;
     
-    canvas.width = 400;
-    canvas.height = 400;
+    // Responsive canvas for mobile
+    const cols = 4;
+    const rows = 4;
+    const cardSize = Math.min(80, (canvas.width - 50) / cols);
+    const padding = 10;
+    
+    canvas.width = cols * (cardSize + padding) + padding;
+    canvas.height = rows * (cardSize + padding) + padding + 40;
     
     canvas.addEventListener('click', handleMemoryClick);
+    
+    // Touch support
+    canvas.addEventListener('touchstart', handleMemoryTouch, {passive: false});
+    
     drawMemory();
 }
 
@@ -365,8 +456,28 @@ function handleMemoryClick(e) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    const col = Math.floor(x / 100);
-    const row = Math.floor(y / 100);
+    processMemoryFlip(x, y);
+}
+
+function handleMemoryTouch(e) {
+    if (!memoryCanFlip || currentGame !== 'memory') return;
+    e.preventDefault();
+    
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    
+    processMemoryFlip(x, y);
+}
+
+function processMemoryFlip(x, y) {
+    const cols = 4;
+    const cardSize = Math.min(80, (canvas.width - 50) / cols);
+    const padding = 10;
+    
+    const col = Math.floor((x - padding) / (cardSize + padding));
+    const row = Math.floor((y - padding) / (cardSize + padding));
     const index = row * 4 + col;
     
     if (index < 0 || index >= 16) return;
@@ -400,32 +511,43 @@ function handleMemoryClick(e) {
 }
 
 function drawMemory() {
+    const cols = 4;
+    const cardSize = Math.min(80, (canvas.width - 50) / cols);
+    const padding = 10;
+    
     ctx.fillStyle = '#2c3e50';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     for (let i = 0; i < 16; i++) {
         const row = Math.floor(i / 4);
         const col = i % 4;
-        const x = col * 100 + 5;
-        const y = row * 100 + 5;
+        const x = col * (cardSize + padding) + padding;
+        const y = row * (cardSize + padding) + padding;
         
         if (memoryCards[i] === null) {
             ctx.fillStyle = '#27ae60';
-            ctx.fillRect(x, y, 90, 90);
+            ctx.fillRect(x, y, cardSize, cardSize);
         } else if (memoryFlipped.includes(i)) {
             ctx.fillStyle = '#ecf0f1';
-            ctx.fillRect(x, y, 90, 90);
+            ctx.fillRect(x, y, cardSize, cardSize);
             ctx.fillStyle = '#2c3e50';
-            ctx.font = '40px Arial';
+            ctx.font = `${cardSize * 0.6}px Arial`;
             ctx.textAlign = 'center';
-            ctx.fillText(memoryCards[i], x + 45, y + 60);
+            ctx.textBaseline = 'middle';
+            ctx.fillText(memoryCards[i], x + cardSize/2, y + cardSize/2);
         } else {
             ctx.fillStyle = '#3498db';
-            ctx.fillRect(x, y, 90, 90);
+            ctx.fillRect(x, y, cardSize, cardSize);
             ctx.fillStyle = '#2980b9';
-            ctx.fillRect(x + 5, y + 5, 80, 80);
+            ctx.fillRect(x + 5, y + 5, cardSize - 10, cardSize - 10);
         }
     }
+    
+    // Draw score
+    ctx.fillStyle = '#ecf0f1';
+    ctx.font = '16px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(`Matched: ${memoryMatched/2}/8`, 10, canvas.height - 10);
 }
 
 // ==================== TETRIS GAME ====================
@@ -468,6 +590,11 @@ function handleTetrisInput(e) {
         case 'ArrowRight': moveTetris(1, 0); break;
         case 'ArrowDown': moveTetris(0, 1); break;
         case 'ArrowUp': rotateTetris(); break;
+    }
+    
+    // Prevent default scrolling
+    if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+        e.preventDefault();
     }
 }
 
@@ -583,19 +710,32 @@ function tetrisLoop() {
 let dino, dinoObstacles, dinoScore, dinoJumping, dinoGravity;
 
 function initDino() {
-    dino = {x: 50, y: 350, width: 30, height: 40, jumpVelocity: 0};
+    dino = {x: 50, y: canvas.height - 50, width: 30, height: 40, jumpVelocity: 0};
     dinoObstacles = [];
     dinoScore = 0;
     dinoJumping = false;
     dinoGravity = 0.8;
+    groundY = canvas.height - 10;
     
+    // Keyboard controls
     document.addEventListener('keydown', (e) => {
         if (currentGame !== 'dino') return;
         if ((e.code === 'Space' || e.code === 'ArrowUp') && !dinoJumping) {
             dinoJumping = true;
             dino.jumpVelocity = -15;
+            e.preventDefault();
         }
     });
+    
+    // Touch controls for mobile
+    canvas.addEventListener('touchstart', (e) => {
+        if (currentGame !== 'dino') return;
+        e.preventDefault();
+        if (!dinoJumping) {
+            dinoJumping = true;
+            dino.jumpVelocity = -15;
+        }
+    }, {passive: false});
     
     dinoLoop();
 }
@@ -608,8 +748,8 @@ function dinoLoop() {
         dino.y += dino.jumpVelocity;
         dino.jumpVelocity += dinoGravity;
         
-        if (dino.y >= 350) {
-            dino.y = 350;
+        if (dino.y >= groundY - dino.height) {
+            dino.y = groundY - dino.height;
             dinoJumping = false;
             dino.jumpVelocity = 0;
         }
@@ -619,7 +759,7 @@ function dinoLoop() {
     if (Math.random() < 0.02) {
         dinoObstacles.push({
             x: canvas.width,
-            y: 350,
+            y: groundY - 30 - Math.random() * 30,
             width: 20 + Math.random() * 20,
             height: 30 + Math.random() * 30
         });
@@ -652,7 +792,7 @@ function dinoLoop() {
     
     // Draw ground
     ctx.fillStyle = '#535353';
-    ctx.fillRect(0, 390, canvas.width, 10);
+    ctx.fillRect(0, groundY, canvas.width, 10);
     
     // Draw dino
     ctx.fillStyle = '#535353';
@@ -660,7 +800,7 @@ function dinoLoop() {
     
     // Draw obstacles
     for (let obs of dinoObstacles) {
-        ctx.fillRect(obs.x, obs.y - obs.height + 40, obs.width, obs.height);
+        ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
     }
     
     // Draw score
@@ -689,6 +829,79 @@ function gameOver(message) {
         gameLoop = null;
     }
 }
+
+// Mobile control handlers
+function setupMobileControls(gameName) {
+    // D-Pad buttons
+    const btnUp = document.getElementById('btnUp');
+    const btnDown = document.getElementById('btnDown');
+    const btnLeft = document.getElementById('btnLeft');
+    const btnRight = document.getElementById('btnRight');
+    const btnAction = document.getElementById('btnAction');
+    
+    // Remove old listeners
+    const newBtnUp = btnUp.cloneNode(true);
+    const newBtnDown = btnDown.cloneNode(true);
+    const newBtnLeft = btnLeft.cloneNode(true);
+    const newBtnRight = btnRight.cloneNode(true);
+    const newBtnAction = btnAction.cloneNode(true);
+    
+    btnUp.parentNode.replaceChild(newBtnUp, btnUp);
+    btnDown.parentNode.replaceChild(newBtnDown, btnDown);
+    btnLeft.parentNode.replaceChild(newBtnLeft, btnLeft);
+    btnRight.parentNode.replaceChild(newBtnRight, btnRight);
+    btnAction.parentNode.replaceChild(newBtnAction, btnAction);
+    
+    // Add touch handlers
+    if (gameName === 'snake') {
+        newBtnUp.addEventListener('touchstart', (e) => { e.preventDefault(); if (direction.y === 0) direction = {x: 0, y: -1}; });
+        newBtnDown.addEventListener('touchstart', (e) => { e.preventDefault(); if (direction.y === 0) direction = {x: 0, y: 1}; });
+        newBtnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); if (direction.x === 0) direction = {x: -1, y: 0}; });
+        newBtnRight.addEventListener('touchstart', (e) => { e.preventDefault(); if (direction.x === 0) direction = {x: 1, y: 0}; });
+    } else if (gameName === 'tetris') {
+        newBtnUp.addEventListener('touchstart', (e) => { e.preventDefault(); rotateTetris(); });
+        newBtnDown.addEventListener('touchstart', (e) => { e.preventDefault(); moveTetris(0, 1); });
+        newBtnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); moveTetris(-1, 0); });
+        newBtnRight.addEventListener('touchstart', (e) => { e.preventDefault(); moveTetris(1, 0); });
+        
+        // Hold down for repeated movement
+        let moveInterval;
+        newBtnDown.addEventListener('touchstart', (e) => { 
+            e.preventDefault(); 
+            moveInterval = setInterval(() => moveTetris(0, 1), 100); 
+        });
+        newBtnDown.addEventListener('touchend', () => clearInterval(moveInterval));
+    } else if (gameName === 'dino') {
+        newBtnAction.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (!dinoJumping) {
+                dinoJumping = true;
+                dino.jumpVelocity = -15;
+            }
+        });
+        
+        // Also allow tap on canvas to jump
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (!dinoJumping) {
+                dinoJumping = true;
+                dino.jumpVelocity = -15;
+            }
+        });
+    }
+}
+
+// Prevent zoom on double tap
+document.addEventListener('dblclick', function(event) {
+    event.preventDefault();
+}, { passive: false });
+
+// Prevent context menu on long press
+document.addEventListener('contextmenu', function(event) {
+    if (event.target.tagName === 'CANVAS' || event.target.tagName === 'BUTTON') {
+        event.preventDefault();
+    }
+});
 
 // Close modal when clicking outside
 window.onclick = function(event) {

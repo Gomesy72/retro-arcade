@@ -2,8 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Retro Arcade — Classic Browser Games</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>🕹️ Retro Arcade — Mobile Games</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -70,6 +72,30 @@
             <span class="close" onclick="closeGame()">&times;</span>
             <h2 id="gameTitle">Game</h2>
             <canvas id="gameCanvas"></canvas>
+            
+            <!-- Mobile Touch Controls -->
+            <div id="mobileControls" class="mobile-controls">
+                <!-- Snake/Tetris D-Pad -->
+                <div id="dpad" class="dpad" style="display:none;">
+                    <div class="dpad-row">
+                        <button class="dpad-btn" id="btnUp">▲</button>
+                    </div>
+                    <div class="dpad-row">
+                        <button class="dpad-btn" id="btnLeft">◀</button>
+                        <button class="dpad-btn" id="btnDown">▼</button>
+                        <button class="dpad-btn" id="btnRight">▶</button>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div id="actionButtons" class="action-buttons" style="display:none;">
+                    <button class="action-btn" id="btnAction">JUMP / ACTION</button>
+                </div>
+                
+                <!-- Memory Game Grid (touch areas) -->
+                <div id="memoryTouch" class="memory-touch" style="display:none;"></div>
+            </div>
+            
             <div class="game-controls">
                 <p id="gameInstructions">Use arrow keys to play</p>
                 <button onclick="resetGame()">↻ Restart</button>
