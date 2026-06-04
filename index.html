@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Arcade — Classic Browser Games</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <div class="brand">
+                <h1>🕹️ RETRO ARCADE</h1>
+                <p class="tagline">Classic games you can play right in your browser</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="games-grid">
+            
+            <div class="game-card" onclick="openGame('snake')">
+                <div class="game-icon">🐍</div>
+                <h2>Snake</h2>
+                <p>The classic. Eat food, grow longer, don't hit the walls!</p>
+                <span class="play-btn">▶ Play</span>
+            </div>
+
+            <div class="game-card" onclick="openGame('tetris')">
+                <div class="game-icon">🧱</div>
+                <h2>Tetris</h2>
+                <p>Fit the falling blocks. Clear lines. Don't stack too high!</p>
+                <span class="play-btn">▶ Play</span>
+            </div>
+
+            <div class="game-card" onclick="openGame('pong')">
+                <div class="game-icon">🏓</div>
+                <h2>Pong</h2>
+                <p>The original video game. Beat the computer!</p>
+                <span class="play-btn">▶ Play</span>
+            </div>
+
+            <div class="game-card" onclick="openGame('breakout')">
+                <div class="game-icon">🧱</div>
+                <h2>Breakout</h2>
+                <p>Break all the bricks with your paddle and ball.</p>
+                <span class="play-btn">▶ Play</span>
+            </div>
+
+            <div class="game-card" onclick="openGame('dino')">
+                <div class="game-icon">🦕</div>
+                <h2>Chrome Dino</h2>
+                <p>The famous offline dinosaur game. Jump cacti!</p>
+                <span class="play-btn">▶ Play</span>
+            </div>
+
+            <div class="game-card" onclick="openGame('memory')">
+                <div class="game-icon">🃏</div>
+                <h2>Memory Match</h2>
+                <p>Match pairs of cards. Test your memory!</p>
+                <span class="play-btn">▶ Play</span>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Game Modal -->
+    <div id="gameModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeGame()">&times;</span>
+            <h2 id="gameTitle">Game</h2>
+            <canvas id="gameCanvas"></canvas>
+            <div class="game-controls">
+                <p id="gameInstructions">Use arrow keys to play</p>
+                <button onclick="resetGame()">↻ Restart</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="site-footer">
+        <div class="container">
+            <p>Retro Arcade — Built with HTML5 Canvas & JavaScript</p>
+            <p>No downloads required. Works on desktop and mobile.</p>
+        </div>
+    </footer>
+
+    <script src="games.js"></script>
+</body>
+</html>
