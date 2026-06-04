@@ -986,11 +986,16 @@ function invadersLoop() {
         }
     }
     
+    // Debug log
+    console.log('Direction:', invadersDirection, 'Rightmost:', rightmostX, 'Leftmost:', leftmostX, 'Canvas:', canvas.width);
+    
     // Check if aliens should move down and reverse
-    if (invadersDirection > 0 && rightmostX + 2 >= canvas.width) {
+    if (invadersDirection === 1 && rightmostX + 2 >= canvas.width) {
+        console.log('Hit right edge! Reversing to left.');
         invadersDirection = -1;
         hitEdge = true;
-    } else if (invadersDirection < 0 && leftmostX - 2 <= 0) {
+    } else if (invadersDirection === -1 && leftmostX - 2 <= 0) {
+        console.log('Hit left edge! Reversing to right.');
         invadersDirection = 1;
         hitEdge = true;
     }
@@ -999,7 +1004,7 @@ function invadersLoop() {
     if (hitEdge) {
         for (let alien of invadersAliens) {
             if (alien.alive) {
-                alien.y += 10; // Move down
+                alien.y += 15; // Move down more
             }
         }
     }
@@ -1007,7 +1012,7 @@ function invadersLoop() {
     // Move all aliens horizontally
     for (let alien of invadersAliens) {
         if (alien.alive) {
-            alien.x += invadersDirection * 2; // Move left or right (speed 2)
+            alien.x += invadersDirection * 3; // Move faster
         }
     }
     
