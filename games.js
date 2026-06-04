@@ -55,7 +55,14 @@ function openGame(gameName) {
                 memoryTouch.style.display = 'none';
                 document.getElementById('btnAction').textContent = 'JUMP';
                 break;
-            case 'memory':
+            case 'invaders':
+                title.textContent = '👾 Space Invaders';
+                instructions.textContent = isMobile ? 'D-Pad to move, Action to shoot' : 'Arrow keys to move, Space to shoot';
+                dpad.style.display = 'flex';
+                actionBtn.style.display = 'flex';
+                memoryTouch.style.display = 'none';
+                document.getElementById('btnAction').textContent = 'SHOOT';
+                break;
                 dpad.style.display = 'none';
                 actionBtn.style.display = 'none';
                 memoryTouch.style.display = 'block';
@@ -92,6 +99,11 @@ function openGame(gameName) {
             title.textContent = '🦕 Chrome Dino';
             instructions.textContent = isMobile ? 'Tap JUMP button or tap screen' : 'Space or Up arrow to jump';
             initDino();
+            break;
+        case 'invaders':
+            title.textContent = '👾 Space Invaders';
+            instructions.textContent = isMobile ? 'D-Pad to move, Action to shoot' : 'Arrow keys to move, Space to shoot';
+            initInvaders();
             break;
         case 'memory':
             title.textContent = '🃏 Memory Match';
@@ -866,6 +878,172 @@ function dinoLoop() {
     gameLoop = requestAnimationFrame(dinoLoop);
 }
 
+// Add keyup handler for smooth movement
+let invadersPlayer = {x: 0, y: 0, width: 30, height: 20, dx: 0};
+let invadersBullets = [];
+let invadersAliens = [];
+let invadersScore = 0;
+
+function shootBullet() {
+    if (!currentGame || currentGame !== 'invaders') return;
+    invadersBullets.push({
+        x: invadersPlayer.x + invadersPlayer.width / 2,
+        y: invadersPlayer.y,
+        dy: -5
+    });
+}
+
+function initInvaders() {
+    // Reset game state
+    invadersPlayer = {
+        x: canvas.width / 2 - 15,
+        y: canvas.height - 30,
+        width: 30,
+        height: 20,
+        dx: 0
+    };
+    invadersBullets = [];
+    invadersScore = 0;
+    
+    // Create alien grid
+    invadersAliens = [];
+    const rows = 4;
+    const cols = 8;
+    const alienWidth = 25;
+    const alienHeight = 20;
+    const padding = 10;
+    
+    for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+            invadersAliens.push({
+                x: col * (alienWidth + padding) + 20,
+                y: row * (alienHeight + padding) + 30,
+                width: alienWidth,
+                height: alienHeight,
+                alive: true,
+                color: `hsl(${row * 90 + 120}, 100%, 60%)`
+            });
+        }
+    }
+    
+    // Clear previous loop if any
+    if (gameLoop) {
+        cancelAnimationFrame(gameLoop);
+        gameLoop = null;
+    }
+    
+    invadersLoop();
+}
+
+function invadersLoop() {
+    if (currentGame !== 'invaders') return;
+    
+    // Move player
+    invadersPlayer.x += invadersPlayer.dx;
+    
+    // Keep player on screen
+    if (invadersPlayer.x < 0) invadersPlayer.x = 0;
+    if (invadersPlayer.x > canvas.width - invadersPlayer.width) invadersPlayer.x = canvas.width - invadersPlayer.width;
+    
+    // Move bullets
+    for (let bullet of invadersBullets) {
+        bullet.y += bullet.dy;
+    }
+    
+    // Remove off-screen bullets
+    invadersBullets = invadersBullets.filter(bullet => bullet.y > 0);
+    
+    // Check bullet-alien collisions
+    for (let bullet of invadersBullets) {
+        for (let alien of invadersAliens) {
+            if (alien.alive &&
+                bullet.x > alien.x && bullet.x < alien.x + alien.width &&
+                bullet.y > alien.y && bullet.y < alien.y + alien.height) {
+                alien.alive = false;
+                invadersScore += 10;
+            }
+        }
+    }
+    
+    // Check win condition
+    if (invadersAliens.every(alien => !alien.alive)) {
+        gameOver('Victory! Score: ' + invadersScore);
+        return;
+    }
+    
+    // Move aliens
+    let moveDown = false;
+    for (let alien of invadersAliens) {
+        if (alien.alive) {
+            alien.x += 1; // Move right
+            if (alien.x + alien.width > canvas.width || alien.x < 0) {
+                moveDown = true;
+            }
+        }
+    }
+    
+    // Reverse direction and move down if hit edge
+    if (moveDown) {
+        for (let alien of invadersAliens) {
+            if (alien.alive) {
+                alien.x -= 1; // Undo the right move
+                alien.y += 10; // Move down
+            }
+        }
+    }
+    
+    // Check game over (aliens reach bottom)
+    for (let alien of invadersAliens) {
+        if (alien.alive && alien.y + alien.height >= invadersPlayer.y) {
+            gameOver('Game Over! Aliens reached Earth! Score: ' + invadersScore);
+            return;
+        }
+    }
+    
+    // Draw
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw stars background
+    ctx.fillStyle = '#fff';
+    for (let i = 0; i < 20; i++) {
+        const x = (i * 37 + invadersScore) % canvas.width;
+        const y = (i * 23) % canvas.height;
+        ctx.fillRect(x, y, 2, 2);
+    }
+    
+    // Draw aliens
+    for (let alien of invadersAliens) {
+        if (alien.alive) {
+            ctx.fillStyle = alien.color;
+            ctx.fillRect(alien.x, alien.y, alien.width, alien.height);
+            // Draw alien eyes
+            ctx.fillStyle = '#000';
+            ctx.fillRect(alien.x + 5, alien.y + 5, 4, 4);
+            ctx.fillRect(alien.x + alien.width - 9, alien.y + 5, 4, 4);
+        }
+    }
+    
+    // Draw player
+    ctx.fillStyle = '#00ff00';
+    ctx.fillRect(invadersPlayer.x, invadersPlayer.y, invadersPlayer.width, invadersPlayer.height);
+    // Player cannon
+    ctx.fillRect(invadersPlayer.x + 12, invadersPlayer.y - 5, 6, 5);
+    
+    // Draw bullets
+    ctx.fillStyle = '#ff0';
+    for (let bullet of invadersBullets) {
+        ctx.fillRect(bullet.x - 1, bullet.y, 2, 5);
+    }
+    
+    // Draw score
+    ctx.fillStyle = '#fff';
+    ctx.font = '20px Courier';
+    ctx.fillText('Score: ' + invadersScore, 10, 25);
+    
+    gameLoop = requestAnimationFrame(invadersLoop);
+}
+
 // ==================== GAME OVER ====================
 function gameOver(message) {
     // Stop game loop but keep currentGame active for restart
@@ -936,6 +1114,20 @@ function setupMobileControls(gameName) {
             moveInterval = setInterval(() => moveTetris(0, 1), 100); 
         });
         newBtnDown.addEventListener('touchend', () => clearInterval(moveInterval));
+    } else if (gameName === 'invaders') {
+        // Space Invaders controls
+        newBtnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); invadersPlayer.dx = -3; });
+        newBtnLeft.addEventListener('touchend', (e) => { e.preventDefault(); if (invadersPlayer.dx < 0) invadersPlayer.dx = 0; });
+        newBtnRight.addEventListener('touchstart', (e) => { e.preventDefault(); invadersPlayer.dx = 3; });
+        newBtnRight.addEventListener('touchend', (e) => { e.preventDefault(); if (invadersPlayer.dx > 0) invadersPlayer.dx = 0; });
+        newBtnUp.style.display = 'none';
+        newBtnDown.style.display = 'none';
+        
+        // Shoot button
+        newBtnAction.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            shootBullet();
+        });
     } else if (gameName === 'dino') {
         newBtnAction.addEventListener('touchstart', (e) => {
             e.preventDefault();
@@ -974,6 +1166,25 @@ document.addEventListener('keydown', (e) => {
                 e.preventDefault();
             }
             break;
+        case 'invaders':
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                shootBullet();
+                e.preventDefault();
+            } else if (e.code === 'ArrowLeft') {
+                invadersPlayer.dx = -3;
+            } else if (e.code === 'ArrowRight') {
+                invadersPlayer.dx = 3;
+            }
+            break;
+    }
+});
+
+// Add keyup handler for smooth movement
+document.addEventListener('keyup', (e) => {
+    if (currentGame === 'invaders') {
+        if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+            invadersPlayer.dx = 0;
+        }
     }
 });
 
