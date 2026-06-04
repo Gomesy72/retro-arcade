@@ -107,18 +107,38 @@ function openGame(gameName) {
 }
 
 function closeGame() {
-    document.getElementById('gameModal').style.display = 'none';
+    // Stop any active game loops
     if (gameLoop) {
-        cancelAnimationFrame(gameLoop);
+        if (currentGame === 'tetris') {
+            clearTimeout(gameLoop);
+        } else {
+            cancelAnimationFrame(gameLoop);
+        }
         gameLoop = null;
     }
+    
+    // Remove all event listeners
+    document.removeEventListener('keydown', handleSnakeInput);
+    document.removeEventListener('keydown', handleTetrisInput);
+    
+    // Remove canvas event listeners by cloning
+    const newCanvas = canvas.cloneNode(true);
+    canvas.parentNode.replaceChild(newCanvas, canvas);
+    canvas = newCanvas;
+    ctx = canvas.getContext('2d');
+    
+    // Hide modal
+    document.getElementById('gameModal').style.display = 'none';
     currentGame = null;
 }
 
 function resetGame() {
     if (currentGame) {
+        // Store the current game name before closing
+        const gameToRestart = currentGame;
         closeGame();
-        openGame(currentGame);
+        // Small delay to ensure cleanup completes
+        setTimeout(() => openGame(gameToRestart), 100);
     }
 }
 
@@ -126,12 +146,18 @@ function resetGame() {
 let snake, food, direction, score;
 
 function initSnake() {
+    // Reset game state
     snake = [{x: 10, y: 10}];
     food = {x: 15, y: 15};
     direction = {x: 1, y: 0};
     score = 0;
     
-    document.addEventListener('keydown', handleSnakeInput);
+    // Clear previous loop if any
+    if (gameLoop) {
+        cancelAnimationFrame(gameLoop);
+        gameLoop = null;
+    }
+    
     snakeLoop();
 }
 
@@ -214,6 +240,12 @@ function initPong() {
     pongPaddle = {y: canvas.height/2 - 40, height: 80, width: 10};
     pongAI = {y: canvas.height/2 - 40, height: 80, width: 10};
     pongScore = {player: 0, ai: 0};
+    
+    // Clear previous loop if any
+    if (gameLoop) {
+        cancelAnimationFrame(gameLoop);
+        gameLoop = null;
+    }
     
     // Mouse control
     canvas.addEventListener('mousemove', (e) => {
@@ -329,6 +361,12 @@ function initBreakout() {
         }
     }
     
+    // Clear previous loop if any
+    if (gameLoop) {
+        cancelAnimationFrame(gameLoop);
+        gameLoop = null;
+    }
+    
     // Mouse control
     canvas.addEventListener('mousemove', (e) => {
         if (currentGame !== 'breakout') return;
@@ -440,6 +478,12 @@ function initMemory() {
     
     canvas.width = cols * (cardSize + padding) + padding;
     canvas.height = rows * (cardSize + padding) + padding + 40;
+    
+    // Clear previous event listeners by cloning
+    const newCanvas = canvas.cloneNode(true);
+    canvas.parentNode.replaceChild(newCanvas, canvas);
+    canvas = newCanvas;
+    ctx = canvas.getContext('2d');
     
     canvas.addEventListener('click', handleMemoryClick);
     
@@ -568,7 +612,12 @@ function initTetris() {
     tetrisScore = 0;
     newTetrisPiece();
     
-    document.addEventListener('keydown', handleTetrisInput);
+    // Clear previous loop if any
+    if (gameLoop) {
+        clearTimeout(gameLoop);
+        gameLoop = null;
+    }
+    
     tetrisLoop();
 }
 
@@ -717,6 +766,12 @@ function initDino() {
     dinoGravity = 0.8;
     groundY = canvas.height - 10;
     
+    // Clear previous loop if any
+    if (gameLoop) {
+        cancelAnimationFrame(gameLoop);
+        gameLoop = null;
+    }
+    
     // Keyboard controls
     document.addEventListener('keydown', (e) => {
         if (currentGame !== 'dino') return;
@@ -813,21 +868,31 @@ function dinoLoop() {
 
 // ==================== GAME OVER ====================
 function gameOver(message) {
+    // Stop game loop but keep currentGame active for restart
+    if (gameLoop) {
+        if (currentGame === 'tetris') {
+            clearTimeout(gameLoop);
+        } else {
+            cancelAnimationFrame(gameLoop);
+        }
+        gameLoop = null;
+    }
+    
+    // Draw game over screen
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     ctx.fillStyle = '#fff';
-    ctx.font = '30px Courier';
+    ctx.font = '24px Courier';
     ctx.textAlign = 'center';
-    ctx.fillText(message, canvas.width / 2, canvas.height / 2);
+    ctx.textBaseline = 'middle';
+    ctx.fillText(message, canvas.width / 2, canvas.height / 2 - 20);
     
-    ctx.font = '20px Courier';
-    ctx.fillText('Press Restart to play again', canvas.width / 2, canvas.height / 2 + 40);
+    ctx.font = '16px Courier';
+    ctx.fillText('Tap Restart button below', canvas.width / 2, canvas.height / 2 + 20);
     
-    if (gameLoop) {
-        cancelAnimationFrame(gameLoop);
-        gameLoop = null;
-    }
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
 }
 
 // Mobile control handlers
@@ -891,10 +956,26 @@ function setupMobileControls(gameName) {
     }
 }
 
-// Prevent zoom on double tap
-document.addEventListener('dblclick', function(event) {
-    event.preventDefault();
-}, { passive: false });
+// Global keyboard event listener
+document.addEventListener('keydown', (e) => {
+    if (!currentGame) return;
+    
+    switch(currentGame) {
+        case 'snake':
+            handleSnakeInput(e);
+            break;
+        case 'tetris':
+            handleTetrisInput(e);
+            break;
+        case 'dino':
+            if ((e.code === 'Space' || e.code === 'ArrowUp') && !dinoJumping) {
+                dinoJumping = true;
+                dino.jumpVelocity = -15;
+                e.preventDefault();
+            }
+            break;
+    }
+});
 
 // Prevent context menu on long press
 document.addEventListener('contextmenu', function(event) {
