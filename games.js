@@ -881,6 +881,8 @@ let invadersPlayer = {x: 0, y: 0, width: 30, height: 20, dx: 0};
 let invadersBullets = [];
 let invadersAliens = [];
 let invadersScore = 0;
+let invadersDirection = 1; // 1 for right, -1 for left
+let invadersMoveDown = false;
 
 function shootBullet() {
     if (!currentGame || currentGame !== 'invaders') return;
@@ -902,6 +904,8 @@ function initInvaders() {
     };
     invadersBullets = [];
     invadersScore = 0;
+    invadersDirection = 1;
+    invadersMoveDown = false;
     
     // Create alien grid
     invadersAliens = [];
@@ -969,24 +973,34 @@ function invadersLoop() {
         return;
     }
     
-    // Move aliens
-    let moveDown = false;
+    // Move aliens - check if any hit the edge
+    let hitEdge = false;
     for (let alien of invadersAliens) {
         if (alien.alive) {
-            alien.x += 1; // Move right
-            if (alien.x + alien.width > canvas.width || alien.x < 0) {
-                moveDown = true;
+            if (invadersDirection > 0 && alien.x + alien.width + 2 > canvas.width) {
+                hitEdge = true;
+                break;
+            } else if (invadersDirection < 0 && alien.x - 2 < 0) {
+                hitEdge = true;
+                break;
             }
         }
     }
     
-    // Reverse direction and move down if hit edge
-    if (moveDown) {
+    // If hit edge, reverse direction and move down
+    if (hitEdge) {
+        invadersDirection = -invadersDirection;
         for (let alien of invadersAliens) {
             if (alien.alive) {
-                alien.x -= 1; // Undo the right move
                 alien.y += 10; // Move down
             }
+        }
+    }
+    
+    // Move all aliens horizontally
+    for (let alien of invadersAliens) {
+        if (alien.alive) {
+            alien.x += invadersDirection * 1; // Move left or right
         }
     }
     
