@@ -255,14 +255,6 @@ class ChessGame {
         }
     }
 
-    undoMove() {
-        if (this.moveHistory.length === 0) return;
-        
-        const lastMove = this.moveHistory.pop();
-        this.board[lastMove.from.row][lastMove.from.col] = lastMove.piece;
-        this.board[lastMove.to.row][lastMove.to.col] = lastMove.captured;
-    }
-
     isKingCaptured() {
         let whiteKing = false;
         let blackKing = false;
@@ -286,7 +278,7 @@ class ChessGame {
         
         // Use setTimeout to allow UI update before AI calculates
         setTimeout(() => {
-            const move = this.findBestMove(2); // Reduced depth for speed
+            const move = this.findBestMove(2);
             if (move) {
                 this.movePiece(move.from.row, move.from.col, move.to.row, move.to.col);
                 this.currentPlayer = 'white';
@@ -299,6 +291,29 @@ class ChessGame {
         }, 100);
     }
 
+    // Copy board for simulation
+    copyBoard() {
+        const newBoard = [];
+        for (let r = 0; r < 8; r++) {
+            newBoard[r] = [];
+            for (let c = 0; c < 8; c++) {
+                const p = this.board[r][c];
+                newBoard[r][c] = p ? { type: p.type, color: p.color } : null;
+            }
+        }
+        return newBoard;
+    }
+
+    // Set board for simulation
+    setBoard(newBoard) {
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = newBoard[r][c];
+                this.board[r][c] = p ? { type: p.type, color: p.color } : null;
+            }
+        }
+    }
+
     findBestMove(depth) {
         let bestMove = null;
         let bestValue = -Infinity;
@@ -308,28 +323,27 @@ class ChessGame {
         // If no moves available, return null (stalemate/checkmate)
         if (moves.length === 0) return null;
         
+        // Save current board state
+        const savedBoard = this.copyBoard();
+        
         for (const move of moves) {
-            // Store original state before simulation
-            const originalPiece = this.board[move.from.row][move.from.col];
+            // Make move on current board
+            const piece = this.board[move.from.row][move.from.col];
             const captured = this.board[move.to.row][move.to.col];
             
-            // Clone piece for simulation
-            const piece = this.clonePiece(originalPiece);
-            
-            this.board[move.to.row][move.to.col] = piece;
+            this.board[move.to.row][move.to.col] = { type: piece.type, color: piece.color };
             this.board[move.from.row][move.from.col] = null;
             
-            // Handle promotion in simulation
+            // Handle promotion
             if (piece.type === 'pawn' && (move.to.row === 0 || move.to.row === 7)) {
                 this.board[move.to.row][move.to.col] = { type: 'queen', color: piece.color };
             }
             
-            // Evaluate
+            // Evaluate using minimax
             const value = this.minimax(depth - 1, -Infinity, Infinity, false);
             
-            // Undo move - restore original state exactly
-            this.board[move.from.row][move.from.col] = originalPiece;
-            this.board[move.to.row][move.to.col] = captured;
+            // Restore board to saved state
+            this.setBoard(savedBoard);
             
             if (value > bestValue) {
                 bestValue = value;
@@ -340,15 +354,9 @@ class ChessGame {
         return bestMove;
     }
 
-    clonePiece(piece) {
-        if (!piece) return null;
-        return { type: piece.type, color: piece.color };
-    }
-
     minimax(depth, alpha, beta, isMaximizing) {
         // Check terminal conditions
         if (this.isKingCaptured()) {
-            // If maximizing (AI) just moved and king is captured, that's good for AI
             return isMaximizing ? -10000 : 10000;
         }
         
@@ -360,30 +368,29 @@ class ChessGame {
         const moves = this.getAllPossibleMoves(player);
         
         if (moves.length === 0) {
-            // No moves - if king is still there, it's stalemate (0), else checkmate
             return this.isKingCaptured() ? (isMaximizing ? -10000 : 10000) : 0;
         }
+        
+        // Save board state before exploring moves
+        const savedBoard = this.copyBoard();
         
         if (isMaximizing) {
             let maxEval = -Infinity;
             for (const move of moves) {
-                const originalPiece = this.board[move.from.row][move.from.col];
-                const captured = this.board[move.to.row][move.to.col];
-                const piece = this.clonePiece(originalPiece);
-                this.board[move.to.row][move.to.col] = piece;
+                const piece = this.board[move.from.row][move.from.col];
+                
+                this.board[move.to.row][move.to.col] = { type: piece.type, color: piece.color };
                 this.board[move.from.row][move.from.col] = null;
                 
                 // Handle promotion
-                const wasPromoted = piece.type === 'pawn' && (move.to.row === 0 || move.to.row === 7);
-                if (wasPromoted) {
+                if (piece.type === 'pawn' && (move.to.row === 0 || move.to.row === 7)) {
                     this.board[move.to.row][move.to.col] = { type: 'queen', color: piece.color };
                 }
                 
                 const eval_ = this.minimax(depth - 1, alpha, beta, false);
                 
-                // Undo - restore original state
-                this.board[move.from.row][move.from.col] = originalPiece;
-                this.board[move.to.row][move.to.col] = captured;
+                // Restore
+                this.setBoard(savedBoard);
                 
                 maxEval = Math.max(maxEval, eval_);
                 alpha = Math.max(alpha, eval_);
@@ -393,23 +400,20 @@ class ChessGame {
         } else {
             let minEval = Infinity;
             for (const move of moves) {
-                const originalPiece = this.board[move.from.row][move.from.col];
-                const captured = this.board[move.to.row][move.to.col];
-                const piece = this.clonePiece(originalPiece);
-                this.board[move.to.row][move.to.col] = piece;
+                const piece = this.board[move.from.row][move.from.col];
+                
+                this.board[move.to.row][move.to.col] = { type: piece.type, color: piece.color };
                 this.board[move.from.row][move.from.col] = null;
                 
                 // Handle promotion
-                const wasPromoted = piece.type === 'pawn' && (move.to.row === 0 || move.to.row === 7);
-                if (wasPromoted) {
+                if (piece.type === 'pawn' && (move.to.row === 0 || move.to.row === 7)) {
                     this.board[move.to.row][move.to.col] = { type: 'queen', color: piece.color };
                 }
                 
                 const eval_ = this.minimax(depth - 1, alpha, beta, true);
                 
-                // Undo - restore original state
-                this.board[move.from.row][move.from.col] = originalPiece;
-                this.board[move.to.row][move.to.col] = captured;
+                // Restore
+                this.setBoard(savedBoard);
                 
                 minEval = Math.min(minEval, eval_);
                 beta = Math.min(beta, eval_);
@@ -463,19 +467,10 @@ class ChessGame {
                         if (piece.type === 'pawn') {
                             score += (piece.color === 'black' ? r : (7 - r)) * 10;
                         }
-                        // Center control bonus
-                        if (piece.type === 'knight' || piece.type === 'bishop') {
-                            const centerDist = Math.abs(3.5 - r) + Math.abs(3.5 - c);
-                            score += (7 - centerDist) * 5;
-                        }
                     } else {
                         score -= value;
                         if (piece.type === 'pawn') {
                             score -= (piece.color === 'black' ? r : (7 - r)) * 10;
-                        }
-                        if (piece.type === 'knight' || piece.type === 'bishop') {
-                            const centerDist = Math.abs(3.5 - r) + Math.abs(3.5 - c);
-                            score -= (7 - centerDist) * 5;
                         }
                     }
                 }
