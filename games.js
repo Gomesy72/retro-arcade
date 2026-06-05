@@ -1264,8 +1264,12 @@ function initChess() {
         const rect = canvas.getBoundingClientRect();
         const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
         const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
-        const x = clientX - rect.left;
-        const y = clientY - rect.top;
+        
+        // Scale coordinates to canvas internal resolution
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = (clientX - rect.left) * scaleX;
+        const y = (clientY - rect.top) * scaleY;
         
         chessGameInstance.handleClick(x, y);
         chessGameInstance.draw();
