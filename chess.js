@@ -80,6 +80,7 @@ class ChessGame {
         this.ctx.textAlign = 'left';
         let statusText = `Current: ${this.currentPlayer}`;
         if (this.aiThinking) statusText += ' (AI thinking...)';
+        if (this.gameOver) statusText = 'Game Over!';
         this.ctx.fillText(statusText, 20, this.canvas.height - 10);
         
         if (this.gameOver) {
@@ -126,17 +127,25 @@ class ChessGame {
         if (this.selectedPiece) {
             // Try to move
             if (this.isValidMove(this.selectedPiece, row, col)) {
-                this.movePiece(this.selectedPiece, row, col);
+                this.movePiece(this.selectedPiece.row, this.selectedPiece.col, row, col);
                 this.selectedPiece = null;
                 this.validMoves = [];
-                this.currentPlayer = this.aiPlayer;
-                this.draw();
                 
-                // Trigger AI after a short delay
-                setTimeout(() => this.makeAIMove(), 300);
+                if (!this.gameOver) {
+                    this.currentPlayer = this.aiPlayer;
+                    this.draw();
+                    // Trigger AI after a short delay
+                    setTimeout(() => this.makeAIMove(), 500);
+                }
             } else {
-                this.selectedPiece = null;
-                this.validMoves = [];
+                // If clicking on another own piece, select it instead
+                if (piece && piece.color === this.currentPlayer) {
+                    this.selectedPiece = { row, col, piece };
+                    this.validMoves = this.getValidMovesForPiece(row, col);
+                } else {
+                    this.selectedPiece = null;
+                    this.validMoves = [];
+                }
             }
         } else if (piece && piece.color === this.currentPlayer) {
             this.selectedPiece = { row, col, piece };
@@ -221,24 +230,37 @@ class ChessGame {
         return true;
     }
 
-    movePiece(from, toRow, toCol) {
-        this.board[toRow][toCol] = from.piece;
-        this.board[from.row][from.col] = null;
+    movePiece(fromRow, fromCol, toRow, toCol) {
+        const piece = this.board[fromRow][fromCol];
+        const captured = this.board[toRow][toCol];
+        
+        this.board[toRow][toCol] = piece;
+        this.board[fromRow][fromCol] = null;
+        
         this.moveHistory.push({
-            from: { row: from.row, col: from.col },
+            from: { row: fromRow, col: fromCol },
             to: { row: toRow, col: toCol },
-            piece: from.piece
+            piece: piece,
+            captured: captured
         });
         
         // Check for pawn promotion
-        if (from.piece.type === 'pawn' && (toRow === 0 || toRow === 7)) {
-            this.board[toRow][toCol] = { type: 'queen', color: from.piece.color };
+        if (piece.type === 'pawn' && (toRow === 0 || toRow === 7)) {
+            this.board[toRow][toCol] = { type: 'queen', color: piece.color };
         }
         
         // Check for king capture (win condition)
         if (this.isKingCaptured()) {
             this.gameOver = true;
         }
+    }
+
+    undoMove() {
+        if (this.moveHistory.length === 0) return;
+        
+        const lastMove = this.moveHistory.pop();
+        this.board[lastMove.from.row][lastMove.from.col] = lastMove.piece;
+        this.board[lastMove.to.row][lastMove.to.col] = lastMove.captured;
     }
 
     isKingCaptured() {
@@ -264,16 +286,16 @@ class ChessGame {
         
         // Use setTimeout to allow UI update before AI calculates
         setTimeout(() => {
-            const move = this.findBestMove(3); // Depth 3 for balance
+            const move = this.findBestMove(2); // Reduced depth for speed
             if (move) {
-                this.movePiece(move.from, move.to.row, move.to.col);
+                this.movePiece(move.from.row, move.from.col, move.to.row, move.to.col);
                 this.currentPlayer = 'white';
-                this.aiThinking = false;
-                this.draw();
             } else {
-                this.aiThinking = false;
-                this.draw();
+                // No valid moves - stalemate or checkmate
+                this.gameOver = true;
             }
+            this.aiThinking = false;
+            this.draw();
         }, 100);
     }
 
@@ -283,12 +305,22 @@ class ChessGame {
         
         const moves = this.getAllPossibleMoves(this.aiPlayer);
         
+        // If no moves available, return null (stalemate/checkmate)
+        if (moves.length === 0) return null;
+        
         for (const move of moves) {
             // Make move
-            const captured = this.board[move.to.row][move.to.col];
             const piece = this.board[move.from.row][move.from.col];
+            const captured = this.board[move.to.row][move.to.col];
             this.board[move.to.row][move.to.col] = piece;
             this.board[move.from.row][move.from.col] = null;
+            
+            // Handle promotion in simulation
+            let promoted = false;
+            if (piece.type === 'pawn' && (move.to.row === 0 || move.to.row === 7)) {
+                this.board[move.to.row][move.to.col] = { type: 'queen', color: piece.color };
+                promoted = true;
+            }
             
             // Evaluate
             const value = this.minimax(depth - 1, -Infinity, Infinity, false);
@@ -307,25 +339,41 @@ class ChessGame {
     }
 
     minimax(depth, alpha, beta, isMaximizing) {
-        if (depth === 0 || this.isKingCaptured()) {
+        // Check terminal conditions
+        if (this.isKingCaptured()) {
+            // If maximizing (AI) just moved and king is captured, that's good for AI
+            return isMaximizing ? -10000 : 10000;
+        }
+        
+        if (depth === 0) {
             return this.evaluateBoard();
         }
         
         const player = isMaximizing ? this.aiPlayer : 'white';
         const moves = this.getAllPossibleMoves(player);
         
-        if (moves.length === 0) return isMaximizing ? -1000 : 1000;
+        if (moves.length === 0) {
+            // No moves - if king is still there, it's stalemate (0), else checkmate
+            return this.isKingCaptured() ? (isMaximizing ? -10000 : 10000) : 0;
+        }
         
         if (isMaximizing) {
             let maxEval = -Infinity;
             for (const move of moves) {
-                const captured = this.board[move.to.row][move.to.col];
                 const piece = this.board[move.from.row][move.from.col];
+                const captured = this.board[move.to.row][move.to.col];
                 this.board[move.to.row][move.to.col] = piece;
                 this.board[move.from.row][move.from.col] = null;
                 
+                // Handle promotion
+                const wasPromoted = piece.type === 'pawn' && (move.to.row === 0 || move.to.row === 7);
+                if (wasPromoted) {
+                    this.board[move.to.row][move.to.col] = { type: 'queen', color: piece.color };
+                }
+                
                 const eval_ = this.minimax(depth - 1, alpha, beta, false);
                 
+                // Undo
                 this.board[move.from.row][move.from.col] = piece;
                 this.board[move.to.row][move.to.col] = captured;
                 
@@ -337,13 +385,20 @@ class ChessGame {
         } else {
             let minEval = Infinity;
             for (const move of moves) {
-                const captured = this.board[move.to.row][move.to.col];
                 const piece = this.board[move.from.row][move.from.col];
+                const captured = this.board[move.to.row][move.to.col];
                 this.board[move.to.row][move.to.col] = piece;
                 this.board[move.from.row][move.from.col] = null;
                 
+                // Handle promotion
+                const wasPromoted = piece.type === 'pawn' && (move.to.row === 0 || move.to.row === 7);
+                if (wasPromoted) {
+                    this.board[move.to.row][move.to.col] = { type: 'queen', color: piece.color };
+                }
+                
                 const eval_ = this.minimax(depth - 1, alpha, beta, true);
                 
+                // Undo
                 this.board[move.from.row][move.from.col] = piece;
                 this.board[move.to.row][move.to.col] = captured;
                 
@@ -365,7 +420,7 @@ class ChessGame {
                         for (let tc = 0; tc < 8; tc++) {
                             if (this.isValidMove({row: r, col: c, piece}, tr, tc)) {
                                 moves.push({
-                                    from: {row: r, col: c, piece},
+                                    from: {row: r, col: c},
                                     to: {row: tr, col: tc}
                                 });
                             }
@@ -399,8 +454,20 @@ class ChessGame {
                         if (piece.type === 'pawn') {
                             score += (piece.color === 'black' ? r : (7 - r)) * 10;
                         }
+                        // Center control bonus
+                        if (piece.type === 'knight' || piece.type === 'bishop') {
+                            const centerDist = Math.abs(3.5 - r) + Math.abs(3.5 - c);
+                            score += (7 - centerDist) * 5;
+                        }
                     } else {
                         score -= value;
+                        if (piece.type === 'pawn') {
+                            score -= (piece.color === 'black' ? r : (7 - r)) * 10;
+                        }
+                        if (piece.type === 'knight' || piece.type === 'bishop') {
+                            const centerDist = Math.abs(3.5 - r) + Math.abs(3.5 - c);
+                            score -= (7 - centerDist) * 5;
+                        }
                     }
                 }
             }
