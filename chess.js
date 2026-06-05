@@ -278,12 +278,19 @@ class ChessGame {
         
         // Use setTimeout to allow UI update before AI calculates
         setTimeout(() => {
-            const move = this.findBestMove(2);
-            if (move) {
-                this.movePiece(move.from.row, move.from.col, move.to.row, move.to.col);
-                this.currentPlayer = 'white';
-            } else {
-                // No valid moves - stalemate or checkmate
+            try {
+                const move = this.findBestMove(2);
+                console.log('AI move:', move);
+                if (move) {
+                    this.movePiece(move.from.row, move.from.col, move.to.row, move.to.col);
+                    this.currentPlayer = 'white';
+                } else {
+                    // No valid moves - stalemate or checkmate
+                    this.gameOver = true;
+                    console.log('AI has no valid moves - game over');
+                }
+            } catch (e) {
+                console.error('AI error:', e);
                 this.gameOver = true;
             }
             this.aiThinking = false;
@@ -319,6 +326,7 @@ class ChessGame {
         let bestValue = -Infinity;
         
         const moves = this.getAllPossibleMoves(this.aiPlayer);
+        console.log('AI possible moves:', moves.length);
         
         // If no moves available, return null (stalemate/checkmate)
         if (moves.length === 0) return null;
@@ -329,7 +337,10 @@ class ChessGame {
         for (const move of moves) {
             // Make move on current board
             const piece = this.board[move.from.row][move.from.col];
-            const captured = this.board[move.to.row][move.to.col];
+            if (!piece) {
+                console.log('Warning: no piece at', move.from);
+                continue;
+            }
             
             this.board[move.to.row][move.to.col] = { type: piece.type, color: piece.color };
             this.board[move.from.row][move.from.col] = null;
