@@ -69,6 +69,11 @@ function openGame(gameName) {
                 actionBtn.style.display = 'none';
                 memoryTouch.style.display = 'none';
                 break;
+            case 'game2048':
+                dpad.style.display = 'flex';
+                actionBtn.style.display = 'none';
+                memoryTouch.style.display = 'none';
+                break;
             case 'memory':
             default:
                 dpad.style.display = 'none';
@@ -112,6 +117,11 @@ function openGame(gameName) {
             title.textContent = '♟️ Chess';
             instructions.textContent = isMobile ? 'Tap a piece, then tap where to move it' : 'Click a piece, then click where to move it';
             initChess();
+            break;
+        case 'game2048':
+            title.textContent = '🔢 2048';
+            instructions.textContent = isMobile ? 'D-Pad to slide tiles' : 'Arrow keys to slide tiles';
+            init2048();
             break;
         case 'memory':
             title.textContent = '🃏 Memory Match';
@@ -1277,4 +1287,173 @@ function initChess() {
     
     canvas.addEventListener('click', chessClickHandler);
     canvas.addEventListener('touchstart', chessClickHandler, {passive: false});
+}
+
+// ==================== 2048 GAME ====================
+let board2048, score2048, gameOver2048;
+const GRID_SIZE = 4;
+const TILE_COLORS = {
+    0: '#CDC1B4', 2: '#EEE4DA', 4: '#EDE0C8', 8: '#F2B179', 16: '#F59563',
+    32: '#F67C5F', 64: '#F65E3B', 128: '#EDCF72', 256: '#EDCC61',
+    512: '#EDC850', 1024: '#EDC53F', 2048: '#EDC22E'
+};
+const TILE_TEXT_COLORS = {
+    0: '#776E65', 2: '#776E65', 4: '#776E65', 8: '#F9F6F2', 16: '#F9F6F2',
+    32: '#F9F6F2', 64: '#F9F6F2', 128: '#F9F6F2', 256: '#F9F6F2',
+    512: '#F9F6F2', 1024: '#F9F6F2', 2048: '#F9F6F2'
+};
+
+function init2048() {
+    board2048 = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(0));
+    score2048 = 0;
+    gameOver2048 = false;
+    addRandomTile();
+    addRandomTile();
+    draw2048();
+    
+    // Remove old listeners
+    document.removeEventListener('keydown', handle2048Input);
+    document.addEventListener('keydown', handle2048Input);
+}
+
+function handle2048Input(e) {
+    if (currentGame !== 'game2048' || gameOver2048) return;
+    
+    let moved = false;
+    switch(e.key) {
+        case 'ArrowUp': moved = move2048(0, -1); break;
+        case 'ArrowDown': moved = move2048(0, 1); break;
+        case 'ArrowLeft': moved = move2048(-1, 0); break;
+        case 'ArrowRight': moved = move2048(1, 0); break;
+        default: return;
+    }
+    
+    e.preventDefault();
+    
+    if (moved) {
+        addRandomTile();
+        draw2048();
+        if (isGameOver2048()) {
+            gameOver2048 = true;
+            draw2048();
+        }
+    }
+}
+
+function move2048(dx, dy) {
+    let moved = false;
+    const merged = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(false));
+    
+    const traverse = dx === 1 || dy === 1 ? [GRID_SIZE - 1, -1, -1] : [0, GRID_SIZE, 1];
+    
+    for (let i = traverse[0]; i !== traverse[1]; i += traverse[2]) {
+        for (let j = traverse[0]; j !== traverse[1]; j += traverse[2]) {
+            const x = dx !== 0 ? i : j;
+            const y = dx !== 0 ? j : i;
+            
+            if (board2048[y][x] === 0) continue;
+            
+            let newX = x, newY = y;
+            
+            while (true) {
+                const nextX = newX + dx;
+                const nextY = newY + dy;
+                
+                if (nextX < 0 || nextX >= GRID_SIZE || nextY < 0 || nextY >= GRID_SIZE) break;
+                if (board2048[nextY][nextX] === 0) {
+                    newX = nextX;
+                    newY = nextY;
+                } else if (board2048[nextY][nextX] === board2048[y][x] && !merged[nextY][nextX]) {
+                    newX = nextX;
+                    newY = nextY;
+                    merged[newY][newX] = true;
+                    break;
+                } else {
+                    break;
+                }
+            }
+            
+            if (newX !== x || newY !== y) {
+                if (board2048[newY][newX] === board2048[y][x]) {
+                    board2048[newY][newX] *= 2;
+                    score2048 += board2048[newY][newX];
+                } else {
+                    board2048[newY][newX] = board2048[y][x];
+                }
+                board2048[y][x] = 0;
+                moved = true;
+            }
+        }
+    }
+    
+    return moved;
+}
+
+function addRandomTile() {
+    const empty = [];
+    for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+            if (board2048[y][x] === 0) empty.push({x, y});
+        }
+    }
+    
+    if (empty.length > 0) {
+        const spot = empty[Math.floor(Math.random() * empty.length)];
+        board2048[spot.y][spot.x] = Math.random() < 0.9 ? 2 : 4;
+    }
+}
+
+function isGameOver2048() {
+    for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+            if (board2048[y][x] === 0) return false;
+            if (x < GRID_SIZE - 1 && board2048[y][x] === board2048[y][x + 1]) return false;
+            if (y < GRID_SIZE - 1 && board2048[y][x] === board2048[y + 1][x]) return false;
+        }
+    }
+    return true;
+}
+
+function draw2048() {
+    const tileSize = Math.min(canvas.width, canvas.height) / GRID_SIZE;
+    
+    ctx.fillStyle = '#BBADA0';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+            const value = board2048[y][x];
+            const px = x * tileSize + 5;
+            const py = y * tileSize + 5;
+            const size = tileSize - 10;
+            
+            ctx.fillStyle = TILE_COLORS[value] || '#3C3A32';
+            ctx.fillRect(px, py, size, size);
+            
+            if (value > 0) {
+                ctx.fillStyle = TILE_TEXT_COLORS[value] || '#F9F6F2';
+                ctx.font = `bold ${tileSize * 0.4}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(value.toString(), px + size/2, py + size/2);
+            }
+        }
+    }
+    
+    // Draw score
+    ctx.fillStyle = '#FFF';
+    ctx.font = '20px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(`Score: ${score2048}`, 10, 30);
+    
+    if (gameOver2048) {
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#FFF';
+        ctx.font = '30px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Game Over!', canvas.width/2, canvas.height/2);
+        ctx.font = '16px Arial';
+        ctx.fillText(`Final Score: ${score2048}`, canvas.width/2, canvas.height/2 + 30);
+    }
 }
