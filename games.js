@@ -64,6 +64,11 @@ function openGame(gameName) {
                 document.getElementById('btnAction').textContent = 'SHOOT';
                 initInvaders();
                 break;
+            case 'chess':
+                dpad.style.display = 'none';
+                actionBtn.style.display = 'none';
+                memoryTouch.style.display = 'none';
+                break;
             case 'memory':
             default:
                 dpad.style.display = 'none';
@@ -103,6 +108,11 @@ function openGame(gameName) {
             instructions.textContent = isMobile ? 'D-Pad to move, Action to shoot' : 'Arrow keys to move, Space to shoot';
             initInvaders();
             break;
+        case 'chess':
+            title.textContent = '♟️ Chess';
+            instructions.textContent = isMobile ? 'Tap a piece, then tap where to move it' : 'Click a piece, then click where to move it';
+            initChess();
+            break;
         case 'memory':
             title.textContent = '🃏 Memory Match';
             instructions.textContent = 'Tap cards to flip them';
@@ -136,6 +146,10 @@ function closeGame() {
     canvas.parentNode.replaceChild(newCanvas, canvas);
     canvas = newCanvas;
     ctx = canvas.getContext('2d');
+    
+    // Clean up chess
+    chessGameInstance = null;
+    chessClickHandler = null;
     
     // Hide modal
     document.getElementById('gameModal').style.display = 'none';
@@ -1227,4 +1241,36 @@ window.onclick = function(event) {
     if (event.target === modal) {
         closeGame();
     }
+}
+
+// ==================== CHESS GAME ====================
+let chessGameInstance = null;
+let chessClickHandler = null;
+
+function initChess() {
+    // Make canvas square for chess
+    const size = Math.min(canvas.width, canvas.height);
+    canvas.width = size;
+    canvas.height = size;
+    
+    // Create instance
+    chessGameInstance = new ChessGame(canvas, ctx);
+    chessGameInstance.draw();
+    
+    // Add click handler
+    chessClickHandler = function(e) {
+        if (currentGame !== 'chess' || !chessGameInstance) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+        const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+        
+        chessGameInstance.handleClick(x, y);
+        chessGameInstance.draw();
+    };
+    
+    canvas.addEventListener('click', chessClickHandler);
+    canvas.addEventListener('touchstart', chessClickHandler, {passive: false});
 }
