@@ -73,6 +73,31 @@ function openGame(gameName) {
                 dpad.style.display = 'flex';
                 actionBtn.style.display = 'none';
                 memoryTouch.style.display = 'none';
+                // Wire D-Pad buttons for 2048
+                setTimeout(() => {
+                    const btnUp = document.getElementById('btnUp');
+                    const btnDown = document.getElementById('btnDown');
+                    const btnLeft = document.getElementById('btnLeft');
+                    const btnRight = document.getElementById('btnRight');
+                    
+                    const handle2048Swipe = (dx, dy) => {
+                        if (currentGame !== 'game2048' || gameOver2048) return;
+                        const moved = move2048(dx, dy);
+                        if (moved) {
+                            addRandomTile();
+                            draw2048();
+                            if (isGameOver2048()) {
+                                gameOver2048 = true;
+                                draw2048();
+                            }
+                        }
+                    };
+                    
+                    btnUp.onclick = () => handle2048Swipe(0, -1);
+                    btnDown.onclick = () => handle2048Swipe(0, 1);
+                    btnLeft.onclick = () => handle2048Swipe(-1, 0);
+                    btnRight.onclick = () => handle2048Swipe(1, 0);
+                }, 100);
                 break;
             case 'memory':
             default:
@@ -120,7 +145,7 @@ function openGame(gameName) {
             break;
         case 'game2048':
             title.textContent = '🔢 2048';
-            instructions.textContent = isMobile ? 'D-Pad to slide tiles' : 'Arrow keys to slide tiles';
+            instructions.textContent = isMobile ? 'D-Pad or swipe to slide tiles' : 'Arrow keys to slide tiles';
             init2048();
             break;
         case 'memory':
@@ -1314,6 +1339,50 @@ function init2048() {
     // Remove old listeners
     document.removeEventListener('keydown', handle2048Input);
     document.addEventListener('keydown', handle2048Input);
+    
+    // Add touch swipe support
+    let touchStartX = 0;
+    let touchStartY = 0;
+    
+    const handleTouchStart = (e) => {
+        if (currentGame !== 'game2048') return;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+    };
+    
+    const handleTouchEnd = (e) => {
+        if (currentGame !== 'game2048' || gameOver2048) return;
+        const touchEndX = e.changedTouches[0].clientX;
+        const touchEndY = e.changedTouches[0].clientY;
+        
+        const dx = touchEndX - touchStartX;
+        const dy = touchEndY - touchStartY;
+        
+        const minSwipe = 30; // minimum swipe distance
+        
+        let moved = false;
+        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > minSwipe) {
+            // Horizontal swipe
+            moved = dx > 0 ? move2048(1, 0) : move2048(-1, 0);
+        } else if (Math.abs(dy) > minSwipe) {
+            // Vertical swipe
+            moved = dy > 0 ? move2048(0, 1) : move2048(0, -1);
+        }
+        
+        if (moved) {
+            addRandomTile();
+            draw2048();
+            if (isGameOver2048()) {
+                gameOver2048 = true;
+                draw2048();
+            }
+        }
+    };
+    
+    canvas.removeEventListener('touchstart', handleTouchStart);
+    canvas.removeEventListener('touchend', handleTouchEnd);
+    canvas.addEventListener('touchstart', handleTouchStart, {passive: true});
+    canvas.addEventListener('touchend', handleTouchEnd, {passive: true});
 }
 
 function handle2048Input(e) {
