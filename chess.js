@@ -309,24 +309,23 @@ class ChessGame {
         if (moves.length === 0) return null;
         
         for (const move of moves) {
-            // Make move
-            const piece = this.board[move.from.row][move.from.col];
+            // Clone piece to avoid reference issues
+            const piece = this.clonePiece(this.board[move.from.row][move.from.col]);
             const captured = this.board[move.to.row][move.to.col];
+            
             this.board[move.to.row][move.to.col] = piece;
             this.board[move.from.row][move.from.col] = null;
             
             // Handle promotion in simulation
-            let promoted = false;
             if (piece.type === 'pawn' && (move.to.row === 0 || move.to.row === 7)) {
                 this.board[move.to.row][move.to.col] = { type: 'queen', color: piece.color };
-                promoted = true;
             }
             
             // Evaluate
             const value = this.minimax(depth - 1, -Infinity, Infinity, false);
             
-            // Undo move
-            this.board[move.from.row][move.from.col] = piece;
+            // Undo move - restore original piece reference
+            this.board[move.from.row][move.from.col] = this.moveHistory.length > 0 ? this.moveHistory[this.moveHistory.length-1].piece : piece;
             this.board[move.to.row][move.to.col] = captured;
             
             if (value > bestValue) {
@@ -336,6 +335,11 @@ class ChessGame {
         }
         
         return bestMove;
+    }
+
+    clonePiece(piece) {
+        if (!piece) return null;
+        return { type: piece.type, color: piece.color };
     }
 
     minimax(depth, alpha, beta, isMaximizing) {
@@ -360,7 +364,7 @@ class ChessGame {
         if (isMaximizing) {
             let maxEval = -Infinity;
             for (const move of moves) {
-                const piece = this.board[move.from.row][move.from.col];
+                const piece = this.clonePiece(this.board[move.from.row][move.from.col]);
                 const captured = this.board[move.to.row][move.to.col];
                 this.board[move.to.row][move.to.col] = piece;
                 this.board[move.from.row][move.from.col] = null;
@@ -385,7 +389,7 @@ class ChessGame {
         } else {
             let minEval = Infinity;
             for (const move of moves) {
-                const piece = this.board[move.from.row][move.from.col];
+                const piece = this.clonePiece(this.board[move.from.row][move.from.col]);
                 const captured = this.board[move.to.row][move.to.col];
                 this.board[move.to.row][move.to.col] = piece;
                 this.board[move.from.row][move.from.col] = null;
